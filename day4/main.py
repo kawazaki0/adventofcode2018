@@ -1,5 +1,5 @@
 import re
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from utils import read_input
 
@@ -23,14 +23,18 @@ sample_input = ['[1518-11-01 00:00] Guard #10 begins shift',
 
 
 def time_search(line):
-    return re.search('\[1518-(\d+)-(\d+) (\d+):(\d+)\]', line).groups()
+    return re.search('\[\d+-(\d+)-(\d+) (\d+):(\d+)\]', line).groups()
 
 
 def guard_id_search(line):
     return re.search('Guard #(\d+) begins shift', line).groups()[0]
 
 
-def method_name(input_text):
+def get_guard_minutes(input_text):
+    """
+    >>> dict(get_guard_minutes(['[1518-11-01 00:00] Guard #88 begins shift', '[1518-11-01 00:05] falls asleep', '[1518-11-01 00:10] wakes up']))
+    {'88': [[5, 6, 7, 8, 9]]}
+    """
     guards = defaultdict(list)
     guard_id = None
     start = None
@@ -45,25 +49,31 @@ def method_name(input_text):
     return guards
 
 
+def sum_list_lengths(lists):
+    return sum(len(l) for l in lists)
+
+
 def solution_first(input_text):
     """
     >>> solution_first(sample_input)
     240
     """
-    guards = method_name(input_text)
+    guard_minutes = get_guard_minutes(input_text)
 
-    guard_id = max(guards.items(), key=lambda x: sum(len(xx) for xx in x[1]))[0]
-    g = guards[guard_id]
+    sleep_guard_id = get_key_of_max_value_from_dict(guard_minutes,
+                                                    map_values=sum_list_lengths)
+    minute_lists = guard_minutes[sleep_guard_id]
 
-    minutes = defaultdict(lambda: 0)
+    minutes_count = count_minutes_from_list_of_list(minute_lists)
 
-    for z in g:
-        for m in z:
-            minutes[m] += 1
+    most_minute = get_key_of_max_value_from_dict(minutes_count)
+    return most_minute * int(sleep_guard_id)
 
-    most_minute = max(minutes.items(), key=lambda x: x[1])[0]
-    answer = most_minute * int(guard_id)
-    return answer
+
+def get_key_of_max_value_from_dict(d, map_values=None):
+    if map_values is None:
+        map_values = lambda x: x
+    return max(d.items(), key=lambda item: map_values(item[1]))[0]
 
 
 def solution_second(input_text):
@@ -74,12 +84,10 @@ def solution_second(input_text):
     best_match = {'minute_num': 0,
                   'minute_count': 0,
                   'g_id': 0}
-    guards = method_name(input_text)
-    for g_id, minute_lists in guards.items():
-        minutes_count = defaultdict(lambda: 0)
-        for minutes in minute_lists:
-            for minute in minutes:
-                minutes_count[minute] += 1
+    guard_minutes = get_guard_minutes(input_text)
+    for g_id, minute_lists in guard_minutes.items():
+        minutes_count = count_minutes_from_list_of_list(minute_lists)
+
         most_minute_count = max(minutes_count.items(), key=lambda x: x[1])
         if best_match['minute_count'] < most_minute_count[1]:
             best_match.update({'minute_num': most_minute_count[0],
@@ -87,6 +95,13 @@ def solution_second(input_text):
                                'g_id': g_id})
 
     return best_match['minute_num'] * int(best_match['g_id'])
+
+
+def count_minutes_from_list_of_list(minute_lists):
+    minutes_flatted = [minute
+                       for minutes_list in minute_lists
+                       for minute in minutes_list]
+    return Counter(minutes_flatted)
 
 
 if __name__ == '__main__':

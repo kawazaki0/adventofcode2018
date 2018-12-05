@@ -5,7 +5,6 @@ import re
 from collections import defaultdict
 
 
-
 def fields(left, top, width, height):
     """
     >>> list(fields(10, 4, 2, 2))
@@ -16,11 +15,27 @@ def fields(left, top, width, height):
             yield left + w, top + h
 
 
-def solution(input_text):
-    table = defaultdict(list)
+def solution_first(input_text):
+    """
+    >>> solution_first(['#1 @ 1,3: 4x4', '#2 @ 3,1: 4x4', '#3 @ 5,5: 2x2'])
+    4
+    """
+    _, table = _group_by_fields(input_text)
     corrupted = set()
-    corrupted_box = set()
+    for field, box_ids in table.items():
+        if len(box_ids) > 1:
+            corrupted.add(field)
+
+    return len(corrupted)
+
+
+def _group_by_fields(input_text):
+    """
+    >>> _group_by_fields(['#88 @ 1,3: 1x2', '#7 @ 1,4: 1x1'])
+    ({88, 7}, {(1, 3): [88], (1, 4): [88, 7]})
+    """
     boxes = set()
+    table = defaultdict(list)
     for box in input_text:
         groups = re.search('#(\d+) @ (\d+),(\d+): (\d+)x(\d+)', box)
         box_id, left, top, width, height = int(groups[1]), int(groups[2]), int(
@@ -28,21 +43,24 @@ def solution(input_text):
         boxes.add(box_id)
         for f in fields(left, top, width, height):
             table[f].append(box_id)
-    for k, v in table.items():
-        if len(v) > 1:
-            corrupted.add(k)
+    return boxes, dict(table)
 
-    for k, v in table.items():
-        if len(v) > 1:
-            for vv in v:
-                corrupted_box.add(vv)
 
-    print(len(corrupted))
-    print(boxes - corrupted_box)
-# print(table)
-# print(box_id, left, top, width, height)
+def solution_second(input_text):
+    """
+    >>> solution_second(['#1 @ 1,3: 4x4', '#2 @ 3,1: 4x4', '#3 @ 5,5: 2x2'])
+    3
+    """
+    boxes, table = _group_by_fields(input_text)
 
-# print(ff[:10])
+    corrupted_box = set()
+    for field, box_ids in table.items():
+        if len(box_ids) > 1:
+            for box_id in box_ids:
+                corrupted_box.add(box_id)
+
+    answer = list(boxes - corrupted_box)[0]
+    return answer
 
 
 if __name__ == '__main__':
@@ -51,6 +69,5 @@ if __name__ == '__main__':
     doctest.testmod()
 
     input_file = read_input()
-    solution(input_file)
-    # print(solution_first(input_file))
-    # print(solution_second(input_file))
+    print(solution_first(input_file))
+    print(solution_second(input_file))
